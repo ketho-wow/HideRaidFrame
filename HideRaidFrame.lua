@@ -2,7 +2,7 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 0.4 [2011.11.21]			---
+--- Version: 0.41 [2011.11.21]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
@@ -17,7 +17,7 @@ CompactRaidFrameContainer.Show = function() end
 CompactRaidFrameContainer:Hide()
 ]]
 
-local VERSION = 0.4
+local VERSION = 0.41
 local NAME = "HideRaidFrame"
 
 HideRaidFrame = LibStub("AceAddon-3.0"):NewAddon(NAME, "AceEvent-3.0", "AceTimer-3.0", "AceConsole-3.0")
