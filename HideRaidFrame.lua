@@ -2,21 +2,22 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 0.3 [2011.11.18]			---
+--- Version: 0.4 [2011.11.21]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
 
---[[ I wish I could do just this, like all the other addons
-	CompactRaidFrameManager:UnregisterAllEvents()
-	CompactRaidFrameManager.Show = function() end
-	CompactRaidFrameManager:Hide()
-	CompactRaidFrameContainer:UnregisterAllEvents()
-	CompactRaidFrameContainer.Show = function() end
-	CompactRaidFrameContainer:Hide()
+-- I wish I could do just this, like all the other addons
+--[[
+CompactRaidFrameManager:UnregisterAllEvents()
+CompactRaidFrameManager.Show = function() end
+CompactRaidFrameManager:Hide()
+CompactRaidFrameContainer:UnregisterAllEvents()
+CompactRaidFrameContainer.Show = function() end
+CompactRaidFrameContainer:Hide()
 ]]
 
-local VERSION = 0.3
+local VERSION = 0.4
 local NAME = "HideRaidFrame"
 
 HideRaidFrame = LibStub("AceAddon-3.0"):NewAddon(NAME, "AceEvent-3.0", "AceTimer-3.0", "AceConsole-3.0")
@@ -28,123 +29,18 @@ local L = LibStub("AceLocale-3.0"):GetLocale("HideRaidFrame", true)
 
 local profile
 local delayRaidManager, delayRaidContainer
-local InCombatLockdown = InCombatLockdown
 
+local _G = _G
+local CompactRaidFrameManager = _G.CompactRaidFrameManager
+local CompactRaidFrameContainer = _G.CompactRaidFrameContainer
+
+-- CompactRaidFrameManager is parented to UIParent
 -- CompactRaidFrameContainer is parented to CompactRaidFrameManager
--- it will actually show now, since it's now unparented and :IsShown() returns true
 CompactRaidFrameContainer:SetParent(UIParent)
 
--- dirty hack, not sure why I can't get it to hide the "normal" way
-if not InCombatLockdown() then
-	CompactRaidFrameContainer:Hide()
-end
-
-	---------------
-	--- Options ---
-	---------------
-
-local function WaitingCombat(bool)
-	return bool and "  |cffFFFF00("..L["Waiting for Combat"]..")|r" or ""
-end
-
-local options = {
-	type = "group",
-	name = NAME.." |cffADFF2Fv"..VERSION.."|r",
-	args = {
-		inline = {
-			type = "group",
-			name = " ",
-			inline = true,
-			args = {
-				Manager = {
-					type = "toggle",
-					order = 1,
-					descStyle = "",
-					width = "full",
-					name = function() return " "..L["Raid Manager"]..WaitingCombat(delayRaidManager) end,
-					get = function(i) return profile.RaidManager end,
-					set = function(i, v) profile.RaidManager = v
-						if InCombatLockdown() then
-							delayRaidManager = true
-						else
-							HRF:RaidManager(profile.RaidManager)
-						end
-					end,
-				},
-				Container = {
-					order = 2,
-					type = "toggle",
-					descStyle = "",
-					width = "full",
-					name = function() return " "..L["Raid Container"]..WaitingCombat(delayRaidContainer) end,
-					get = function(i) return profile.RaidContainer end,
-					set = function(i, v) profile.RaidContainer = v
-						if InCombatLockdown() then
-							delayRaidContainer = true
-						else
-							HRF:RaidContainer(profile.RaidContainer)
-						end
-					end,
-				},
-			},
-		},
-	},
-}
-
-	----------------------
-	--- Initialization ---
-	----------------------
-
-local optionsFrame
-
-function HRF:OnInitialize()
-	self.db = LibStub("AceDB-3.0"):New("HideRaidFrameDB2", nil, true)
-
-	self.db.RegisterCallback(self, "OnProfileChanged", "RefreshConfig")
-	self.db.RegisterCallback(self, "OnProfileCopied", "RefreshConfig")
-	self.db.RegisterCallback(self, "OnProfileReset", "RefreshConfig")
-	self:RefreshConfig()
-
-	self.db.global.version = VERSION
-	self.db.global.fileType = "Release"
-
-	ACR:RegisterOptionsTable("HideRaidFrame_Main", options)
-	ACR:RegisterOptionsTable("HideRaidFrame_Profiles", LibStub("AceDBOptions-3.0"):GetOptionsTable(self.db))
-
-	optionsFrame = ACD:AddToBlizOptions("HideRaidFrame_Main", NAME)
-	ACD:AddToBlizOptions("HideRaidFrame_Profiles", L["Profiles"], NAME)
-
-	self:RegisterChatCommand("hr", "SlashCommand")
-	self:RegisterChatCommand("hrf", "SlashCommand")
-	self:RegisterChatCommand("hideraid", "SlashCommand")
-	self:RegisterChatCommand("hideraidframe", "SlashCommand")
-
-	-- show/hide based on configuration
-	if InCombatLockdown() then
-		delayRaidManager, delayRaidContainer = true, true
-	else
-		self:RaidManager(profile.RaidManager)
-		self:RaidContainer(profile.RaidContainer)
-	end
-end
-
-function HRF:OnEnable()
-	self:RegisterEvent("PLAYER_REGEN_ENABLED")
-	self:RegisterEvent("PARTY_MEMBERS_CHANGED")
-	self:RegisterEvent("CVAR_UPDATE")
-end
-
-function HRF:RefreshConfig()
-	profile = self.db.profile
-end
-
-function HRF:SlashCommand(input)
-	InterfaceOptionsFrame_OpenToCategory(optionsFrame)
-end
-
-	---------------
-	---- Events ---
-	---------------
+	--------------------------
+	---- Raid Frame Events ---
+	--------------------------
 
 local CRFM_Events = {
 	"DISPLAY_SIZE_CHANGED",
@@ -169,17 +65,17 @@ local CRFC_Events = {
 	---- Prehooks ---
 	-----------------
 
+local function IsRaidManager()
+	return GetNumRaidMembers() > 0 or GetNumPartyMembers() > 0 or profile.Solo
+end
+
 -- "Use Raid-Style Party Frames" option
 local function IsRaidContainer()
-	return GetNumRaidMembers() > 0 or (GetCVar("useCompactPartyFrames") == "1" and GetNumPartyMembers() > 0)
+	local numPartyMembers = GetNumPartyMembers()
+	return GetNumRaidMembers() > 0 or (GetCVar("useCompactPartyFrames") == "1" and numPartyMembers > 0) or (numPartyMembers == 0 and profile.Solo)
 end
 
-local function IsRaidManager()
-	return GetNumRaidMembers() > 0 or GetNumPartyMembers() > 0
-end
-
--- this is to prevent InterfaceOptionsFrameCancel,
--- and other stuff from showing/hiding it again
+-- this is to prevent InterfaceOptionsFrameCancel, and other stuff from showing/hiding it again
 local oldCompactRaidFrameManager_Show = CompactRaidFrameManager.Show
 function CompactRaidFrameManager:Show()
 	if profile.RaidManager and IsRaidManager() then
@@ -236,7 +132,7 @@ function HRF:RaidContainer(show, isDelayed)
 			CompactRaidFrameContainer:RegisterEvent(v)
 		end
 		CompactRaidFrameContainer:Show()
-		-- didn't seem to properly update, when "Use Raid-Style Party Frames" is disabled
+		-- this didn't seem to properly update, when "Use Raid-Style Party Frames" is disabled
 		CompactRaidFrameContainer_OnEvent(CompactRaidFrameContainer, "PARTY_MEMBERS_CHANGED")
 		--print("|cffB6CA00Enabling|r: |cffFFFF00CompactRaidFrame|rContainer")
 	else
@@ -251,6 +147,139 @@ function HRF:RaidContainer(show, isDelayed)
 		end, .5)
 	end
 end
+
+	---------------
+	--- Options ---
+	---------------
+
+local function WaitingCombat(bool)
+	return bool and "  |cffFFFF00("..L["Waiting for Combat"]..")|r" or ""
+end
+
+local options = {
+	type = "group",
+	name = NAME.." |cffADFF2Fv"..VERSION.."|r",
+	args = {
+		inline = {
+			type = "group",
+			order = 1,
+			name = " ",
+			inline = true,
+			args = {
+				Manager = {
+					type = "toggle",
+					order = 1,
+					descStyle = "",
+					width = "full",
+					name = function() return " "..L["Raid Manager"]..WaitingCombat(delayRaidManager) end,
+					get = function(i) return profile.RaidManager end,
+					set = function(i, v) profile.RaidManager = v
+						if InCombatLockdown() then
+							delayRaidManager = true
+						else
+							HRF:RaidManager(profile.RaidManager)
+						end
+					end,
+				},
+				Container = {
+					order = 2,
+					type = "toggle",
+					descStyle = "",
+					width = "full",
+					name = function() return " "..L["Raid Container"]..WaitingCombat(delayRaidContainer) end,
+					get = function(i) return profile.RaidContainer end,
+					set = function(i, v) profile.RaidContainer = v
+						if InCombatLockdown() then
+							delayRaidContainer = true
+						else
+							HRF:RaidContainer(profile.RaidContainer)
+						end
+					end,
+				},
+			},
+		},
+		Solo = {
+			type = "toggle",
+			order = 2,
+			descStyle = "",
+			width = "full",
+			name = function() return " |cff71D5FF"..SOLO.."|r" end,
+			get = function(i) return profile.Solo end,
+			set = function(i, v) profile.Solo = v
+				if InCombatLockdown() then
+					delayRaidManager, delayRaidContainer = true, true
+				else
+					HRF:RaidManager(profile.RaidManager)
+					HRF:RaidContainer(profile.RaidContainer)
+				end
+			end,
+			hidden = function()
+				return not profile.RaidManager and not profile.RaidContainer
+			end,
+		},
+	},
+}
+
+	----------------------
+	--- Initialization ---
+	----------------------
+
+local optionsFrame
+
+function HRF:OnInitialize()
+	self.db = LibStub("AceDB-3.0"):New("HideRaidFrameDB2", nil, true)
+
+	self.db.RegisterCallback(self, "OnProfileChanged", "RefreshConfig")
+	self.db.RegisterCallback(self, "OnProfileCopied", "RefreshConfig")
+	self.db.RegisterCallback(self, "OnProfileReset", "RefreshConfig")
+	self:RefreshConfig()
+
+	self.db.global.version = VERSION
+	self.db.global.fileType = "Release"
+
+	ACR:RegisterOptionsTable("HideRaidFrame_Main", options)
+	ACR:RegisterOptionsTable("HideRaidFrame_Profiles", LibStub("AceDBOptions-3.0"):GetOptionsTable(self.db))
+
+	optionsFrame = ACD:AddToBlizOptions("HideRaidFrame_Main", NAME)
+	ACD:AddToBlizOptions("HideRaidFrame_Profiles", L["Profiles"], NAME)
+
+	self:RegisterChatCommand("hr", "SlashCommand")
+	self:RegisterChatCommand("hrf", "SlashCommand")
+	self:RegisterChatCommand("hideraid", "SlashCommand")
+	self:RegisterChatCommand("hideraidframe", "SlashCommand")
+
+	-- show/hide based on configuration
+	if InCombatLockdown() then
+		delayRaidManager, delayRaidContainer = true, true
+	else
+		self:RaidManager(profile.RaidManager)
+		self:RaidContainer(profile.RaidContainer)
+	end
+end
+
+function HRF:OnEnable()
+	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+	self:RegisterEvent("PARTY_MEMBERS_CHANGED")
+	self:RegisterEvent("CVAR_UPDATE")
+end
+
+function HRF:RefreshConfig()
+	profile = self.db.profile
+	if InCombatLockdown() then
+		delayRaidManager, delayRaidContainer = true, true
+	else
+		self:RaidManager(profile.RaidManager)
+		self:RaidContainer(profile.RaidContainer)
+	end
+end
+
+function HRF:SlashCommand(input)
+	InterfaceOptionsFrame_OpenToCategory(optionsFrame)
+end
+
+	---------------
+	---- Events ---
+	---------------
 
 -- leaving combat
 function HRF:PLAYER_REGEN_ENABLED()
