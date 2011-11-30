@@ -2,7 +2,7 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 0.41 [2011.11.21]			---
+--- Version: 0.5 [2011.11.30]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
@@ -17,8 +17,9 @@ CompactRaidFrameContainer.Show = function() end
 CompactRaidFrameContainer:Hide()
 ]]
 
-local VERSION = 0.41
-local NAME = "HideRaidFrame"
+local NAME = ...
+local VERSION = 0.5
+local BUILD = "Release"
 
 HideRaidFrame = LibStub("AceAddon-3.0"):NewAddon(NAME, "AceEvent-3.0", "AceTimer-3.0", "AceConsole-3.0")
 local HRF = HideRaidFrame
@@ -127,6 +128,10 @@ function HRF:RaidManager(show)
 end
 
 function HRF:RaidContainer(show, isDelayed)
+	-- combat state still seems to be leaking through
+	if InCombatLockdown() then
+		delayRaidContainer = true; return
+	end
 	if show and IsRaidContainer() then
 		for _, v in ipairs(CRFC_Events) do
 			CompactRaidFrameContainer:RegisterEvent(v)
@@ -161,16 +166,13 @@ local options = {
 	name = NAME.." |cffADFF2Fv"..VERSION.."|r",
 	args = {
 		inline = {
-			type = "group",
-			order = 1,
+			type = "group", order = 1,
 			name = " ",
 			inline = true,
 			args = {
-				Manager = {
-					type = "toggle",
-					order = 1,
-					descStyle = "",
-					width = "full",
+				RaidManager = {
+					type = "toggle", order = 1,
+					width = "full", descStyle = "",
 					name = function() return " "..L["Raid Manager"]..WaitingCombat(delayRaidManager) end,
 					get = function(i) return profile.RaidManager end,
 					set = function(i, v) profile.RaidManager = v
@@ -181,11 +183,9 @@ local options = {
 						end
 					end,
 				},
-				Container = {
-					order = 2,
-					type = "toggle",
-					descStyle = "",
-					width = "full",
+				RaidContainer = {
+					type = "toggle", order = 2,
+					width = "full", descStyle = "",
 					name = function() return " "..L["Raid Container"]..WaitingCombat(delayRaidContainer) end,
 					get = function(i) return profile.RaidContainer end,
 					set = function(i, v) profile.RaidContainer = v
@@ -199,11 +199,9 @@ local options = {
 			},
 		},
 		Solo = {
-			type = "toggle",
-			order = 2,
-			descStyle = "",
-			width = "full",
-			name = function() return " |cff71D5FF"..SOLO.."|r" end,
+			type = "toggle", order = 2,
+			width = "full", descStyle = "",
+			name = " |cff71D5FF"..SOLO.."|r",
 			get = function(i) return profile.Solo end,
 			set = function(i, v) profile.Solo = v
 				if InCombatLockdown() then
@@ -235,7 +233,7 @@ function HRF:OnInitialize()
 	self:RefreshConfig()
 
 	self.db.global.version = VERSION
-	self.db.global.fileType = "Release"
+	self.db.global.build = BUILD
 
 	ACR:RegisterOptionsTable("HideRaidFrame_Main", options)
 	ACR:RegisterOptionsTable("HideRaidFrame_Profiles", LibStub("AceDBOptions-3.0"):GetOptionsTable(self.db))
@@ -247,20 +245,19 @@ function HRF:OnInitialize()
 	self:RegisterChatCommand("hrf", "SlashCommand")
 	self:RegisterChatCommand("hideraid", "SlashCommand")
 	self:RegisterChatCommand("hideraidframe", "SlashCommand")
-
-	-- show/hide based on configuration
-	if InCombatLockdown() then
-		delayRaidManager, delayRaidContainer = true, true
-	else
-		self:RaidManager(profile.RaidManager)
-		self:RaidContainer(profile.RaidContainer)
-	end
 end
 
 function HRF:OnEnable()
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 	self:RegisterEvent("PARTY_MEMBERS_CHANGED")
 	self:RegisterEvent("CVAR_UPDATE")
+
+	if InCombatLockdown() then
+		delayRaidManager, delayRaidContainer = true, true
+	else
+		self:RaidManager(profile.RaidManager)
+		self:RaidContainer(profile.RaidContainer)
+	end
 end
 
 function HRF:RefreshConfig()
@@ -334,8 +331,7 @@ local dataobject = {
 	end,
 	OnTooltipShow = function(tt)
 		tt:AddLine("|cffFFFFFF"..NAME.."|r")
-		tt:AddDoubleLine(L["Raid Manager"], format("|cff%s|r", profile.RaidManager and "ADFF2F"..VIDEO_OPTIONS_ENABLED or "FF0000"..VIDEO_OPTIONS_DISABLED))
-		tt:AddDoubleLine(L["Raid Container"], format("|cff%s|r", profile.RaidContainer and "ADFF2F"..VIDEO_OPTIONS_ENABLED or "FF0000"..VIDEO_OPTIONS_DISABLED))
+		tt:AddLine("|cffFFFFFFClick|r to open the options menu")
 	end,
 }
 
