@@ -2,7 +2,7 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 0.5 [2011.11.30]			---
+--- Version: 0.51 [2011.12.01]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
@@ -18,7 +18,7 @@ CompactRaidFrameContainer:Hide()
 ]]
 
 local NAME = ...
-local VERSION = 0.5
+local VERSION = 0.51
 local BUILD = "Release"
 
 HideRaidFrame = LibStub("AceAddon-3.0"):NewAddon(NAME, "AceEvent-3.0", "AceTimer-3.0", "AceConsole-3.0")
@@ -34,6 +34,7 @@ local delayRaidManager, delayRaidContainer
 local _G = _G
 local CompactRaidFrameManager = _G.CompactRaidFrameManager
 local CompactRaidFrameContainer = _G.CompactRaidFrameContainer
+local InCombatLockdown = _G.InCombatLockdown
 
 -- CompactRaidFrameManager is parented to UIParent
 -- CompactRaidFrameContainer is parented to CompactRaidFrameManager
@@ -80,7 +81,12 @@ end
 local oldCompactRaidFrameManager_Show = CompactRaidFrameManager.Show
 function CompactRaidFrameManager:Show()
 	if profile.RaidManager and IsRaidManager() then
-		oldCompactRaidFrameManager_Show(self)
+		-- need more band-aid it seems..
+		if InCombatLockdown() then
+			delayRaidManager = true
+		else
+			oldCompactRaidFrameManager_Show(self)
+		end
 		--print("|cffFFFF00Raid|rManager: |cffB6CA00Show|r", profile.RaidManager)
 	end
 end
@@ -88,7 +94,11 @@ end
 local oldCompactRaidFrameManager_Hide = CompactRaidFrameManager.Hide
 function CompactRaidFrameManager:Hide()
 	if not profile.RaidManager or not IsRaidManager() then
-		oldCompactRaidFrameManager_Hide(self)
+		if InCombatLockdown() then
+			delayRaidManager = true
+		else
+			oldCompactRaidFrameManager_Hide(self)
+		end
 		--print("|cffFFFF00Raid|rManager: |cffFF2424Hide|r", profile.RaidManager)
 	end
 end
@@ -96,7 +106,11 @@ end
 local oldCompactRaidFrameContainer_Show = CompactRaidFrameContainer.Show
 function CompactRaidFrameContainer:Show()
 	if profile.RaidContainer and IsRaidContainer() then
-		oldCompactRaidFrameContainer_Show(self)
+		if InCombatLockdown() then
+			delayRaidContainer = true
+		else
+			oldCompactRaidFrameContainer_Show(self)
+		end
 		--print("|cffFFFF00Raid|rContainer: |cffB6CA00Show|r", profile.RaidContainer)
 	end
 end
@@ -104,7 +118,11 @@ end
 local oldCompactRaidFrameContainer_Hide = CompactRaidFrameContainer.Hide
 function CompactRaidFrameContainer:Hide()
 	if not profile.RaidContainer or not IsRaidContainer() then
-		oldCompactRaidFrameContainer_Hide(self)
+		if InCombatLockdown() then
+			delayRaidContainer = true
+		else
+			oldCompactRaidFrameContainer_Hide(self)
+		end
 		--print("|cffFFFF00Raid|rContainer: |cffFF2424Hide|r", profile.RaidContainer)
 	end
 end
@@ -138,7 +156,9 @@ function HRF:RaidContainer(show, isDelayed)
 		end
 		CompactRaidFrameContainer:Show()
 		-- this didn't seem to properly update, when "Use Raid-Style Party Frames" is disabled
-		CompactRaidFrameContainer_OnEvent(CompactRaidFrameContainer, "PARTY_MEMBERS_CHANGED")
+		if not InCombatLockdown() then
+			CompactRaidFrameContainer_OnEvent(CompactRaidFrameContainer, "PARTY_MEMBERS_CHANGED")
+		end
 		--print("|cffB6CA00Enabling|r: |cffFFFF00CompactRaidFrame|rContainer")
 	else
 		CompactRaidFrameContainer:UnregisterAllEvents()
