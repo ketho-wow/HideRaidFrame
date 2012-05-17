@@ -11,14 +11,10 @@ local dataobject = {
 	icon = "Interface\\Icons\\Ability_Stealth",
 	text = NAME,
 	OnClick = function(clickedframe, button)
-		if ACD.OpenFrames["HideRaidFrame_Main"] then
-			ACD:Close("HideRaidFrame_Main")
-		else
-			ACD:Open("HideRaidFrame_Main")
-		end
+		ACD[ACD.OpenFrames[NAME] and "Close" or "Open"](ACD, NAME)
 	end,
 	OnTooltipShow = function(tt)
-		tt:AddLine("|cffFFFFFF"..NAME.."|r")
+		tt:AddLine("|cffADFF2F"..NAME.."|r")
 		tt:AddLine(L.BROKER_CLICK)
 		tt:AddLine(L.BROKER_SHIFT_CLICK)
 	end,
