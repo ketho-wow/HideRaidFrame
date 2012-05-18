@@ -8,8 +8,10 @@ local L = {
 		BROKER_SHIFT_CLICK = "|cffFFFFFFShift-klickt|r, um dieses AddOn ein-/auszuschalten",
 	},
 	enUS = {
-		RAID_CONTAINER = "Raid Container",
-		RAID_MANAGER = "Raid Manager",
+		RAID_CONTAINER = RAID.." Container",
+		RAID_MANAGER = RAID.." Manager",
+		HARD_DISABLE = "Hard "..DISABLE,
+		HARD_DISABLE_DESC = "Note: There might be compatibility issues with other "..ADDONS,
 		BROKER_CLICK = "|cffFFFFFFClick|r to open the options menu",
 		BROKER_SHIFT_CLICK = "|cffFFFFFFShift-click|r to toggle this AddOn",
 	},

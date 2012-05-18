@@ -2,13 +2,13 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 0.7 [2012.05.18]			---
+--- Version: 0.8 [2012.05.18]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
 
 local NAME, S = ...
-local VERSION = 0.7
+local VERSION = 0.8
 local BUILD = "Release"
 
 local ACR = LibStub("AceConfigRegistry-3.0")
@@ -20,7 +20,7 @@ local db
 local pendingReload
 
 local function ToggleAddOn(v)
-	local f = v and EnableAddOn or DisableAddOn
+	local f = (v or not db.HardDisable) and EnableAddOn or DisableAddOn
 	f("Blizzard_CompactRaidFrames")
 	f("Blizzard_CUFProfiles")
 end
@@ -32,20 +32,19 @@ end
 local options = {
 	type = "group",
 	name = format("%s |cffADFF2Fv%s|r", NAME, VERSION),
+	get = function(i)
+		return db[i[#i]]
+	end,
+	set = function(i, v)
+		db[i[#i]] = v
+		pendingReload = true
+		ToggleAddOn(db.Manager or db.Container)
+	end,
 	args = {
 		inline1 = {
 			type = "group", order = 1,
 			name = " ",
 			inline = true,
-			handler = HRF,
-			get = function(i)
-				return db[i[#i]]
-			end,
-			set = function(i, v)
-				db[i[#i]] = v
-				pendingReload = true
-				ToggleAddOn(db.Manager or db.Container)
-			end,
 			args = {
 				Manager = {
 					type = "toggle", order = 1,
@@ -59,8 +58,14 @@ local options = {
 				},
 			},
 		},
+		HardDisable = {
+			type = "toggle", order = 2,
+			desc = L.HARD_DISABLE_DESC,
+			name = L.HARD_DISABLE,
+			disabled = function() return db.Manager or db.Container end,
+		},
 		Reload = {
-			type = "execute", order = 2,
+			type = "execute", order = 3,
 			descStyle = "",
 			name = "|TInterface\\OptionsFrame\\UI-OptionsFrame-NewFeatureIcon:0:0:-2|t"..SLASH_RELOAD1,
 			func = ReloadUI,
@@ -85,7 +90,7 @@ function f:OnEvent(event, ...)
 		
 		ACR:RegisterOptionsTable(NAME, options)
 		ACD:AddToBlizOptions(NAME, NAME)
-		ACD:SetDefaultSize(NAME, 300, 200)
+		ACD:SetDefaultSize(NAME, 380, 200)
 		
 		if IsAddOnLoaded("Blizzard_CompactRaidFrames") then
 			
@@ -94,7 +99,7 @@ function f:OnEvent(event, ...)
 			
 			-- CompactRaidFrameManager is parented to UIParent
 			-- CompactRaidFrameContainer is parented to CompactRaidFrameManager
-			-- Bug: Container will still be shown when solo, after leaving a raid
+			-- bug: Container (if enabled) will still be shown when solo, after leaving a raid
 			CompactRaidFrameContainer:SetParent(UIParent)
 			
 			if not db.Manager then
