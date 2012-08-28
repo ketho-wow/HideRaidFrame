@@ -1,5 +1,5 @@
-## Interface: 40300
-## Version: 0.8
+## Interface: 50001
+## Version: 0.9
 ## Title: HideRaidFrame
 ## Notes: Hides the Blizzard Raid Frame
 ## Author: Ketho @ EU-Boulderfist

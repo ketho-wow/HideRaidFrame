@@ -2,13 +2,13 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 0.8 [2012.05.18]			---
+--- Version: 0.9 [2012.08.28]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
 
 local NAME, S = ...
-local VERSION = 0.8
+local VERSION = 0.9
 local BUILD = "Release"
 
 local ACR = LibStub("AceConfigRegistry-3.0")
@@ -25,6 +25,8 @@ local function ToggleAddOn(v)
 	f("Blizzard_CUFProfiles")
 end
 
+local frames = {"Manager", "Container"}
+
 	---------------
 	--- Options ---
 	---------------
@@ -37,6 +39,9 @@ local options = {
 	end,
 	set = function(i, v)
 		db[i[#i]] = v
+		if db.Manager or db.Container then
+			db.HardDisable = false
+		end
 		pendingReload = true
 		ToggleAddOn(db.Manager or db.Container)
 	end,
@@ -80,43 +85,39 @@ local options = {
 
 local f = CreateFrame("Frame")
 
-function f:OnEvent(event, ...)
-	local addon = ...
+function f:OnEvent(event, addon)
+	if addon ~= NAME then return end
 	
-	if addon == NAME then
-		HideRaidFrameDB3 = HideRaidFrameDB3 or {}
-		db = HideRaidFrameDB3
-		db.version = VERSION
+	HideRaidFrameDB3 = HideRaidFrameDB3 or {}
+	db = HideRaidFrameDB3
+	db.version = VERSION
+	
+	ACR:RegisterOptionsTable(NAME, options)
+	ACD:AddToBlizOptions(NAME, NAME)
+	ACD:SetDefaultSize(NAME, 380, 200)
+	
+	if IsAddOnLoaded("Blizzard_CompactRaidFrames") then
 		
-		ACR:RegisterOptionsTable(NAME, options)
-		ACD:AddToBlizOptions(NAME, NAME)
-		ACD:SetDefaultSize(NAME, 380, 200)
+		-- InCombatLockdown does not readily seem to return the correct value though
+		if InCombatLockdown() then print(format("|cff33FF99%s:|r %s", NAME, ERR_NOT_IN_COMBAT)) return end
 		
-		if IsAddOnLoaded("Blizzard_CompactRaidFrames") then
-			
-			-- InCombatLockdown does not readily seem to return the correct value though
-			if InCombatLockdown() then print(format("|cff33FF99%s:|r %s", NAME, ERR_NOT_IN_COMBAT)) return end
-			
-			-- CompactRaidFrameManager is parented to UIParent
-			-- CompactRaidFrameContainer is parented to CompactRaidFrameManager
-			-- bug: Container (if enabled) will still be shown when solo, after leaving a raid
-			CompactRaidFrameContainer:SetParent(UIParent)
-			
-			if not db.Manager then
-				CompactRaidFrameManager:UnregisterAllEvents()
-				CompactRaidFrameManager.Show = function() end
-				CompactRaidFrameManager:Hide()
-			end
-			if not db.Container then
-				CompactRaidFrameContainer:UnregisterAllEvents()
-				CompactRaidFrameContainer.Show = function() end
-				CompactRaidFrameContainer:Hide()
+		-- CompactRaidFrameManager is parented to UIParent
+		-- CompactRaidFrameContainer is parented to CompactRaidFrameManager
+		-- bug: Container (if enabled) will still be shown when solo, after leaving a raid
+		CompactRaidFrameContainer:SetParent(UIParent)
+		
+		for _, v in ipairs(frames) do
+			if not db[v] then
+				local f = _G["CompactRaidFrame"..v]
+				f:UnregisterAllEvents()
+				f.Show = function() end
+				f:Hide()
 			end
 		end
-		
-		ToggleAddOn(db.Manager or db.Container)
-		self:UnregisterEvent("ADDON_LOADED")
 	end
+	
+	ToggleAddOn(db.Manager or db.Container)
+	self:UnregisterEvent("ADDON_LOADED")
 end
 
 f:RegisterEvent("ADDON_LOADED")
