@@ -2,13 +2,13 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 0.9 [2012.08.28]			---
+--- Version: 1.0 [2012.10.08]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
 
 local NAME, S = ...
-local VERSION = 0.9
+local VERSION = "1.0"
 local BUILD = "Release"
 
 local ACR = LibStub("AceConfigRegistry-3.0")
@@ -98,13 +98,32 @@ function f:OnEvent(event, addon)
 	
 	if IsAddOnLoaded("Blizzard_CompactRaidFrames") then
 		
+		-- abort when in combat
 		-- InCombatLockdown does not readily seem to return the correct value though
-		if InCombatLockdown() then print(format("|cff33FF99%s:|r %s", NAME, ERR_NOT_IN_COMBAT)) return end
+		if InCombatLockdown() or UnitAffectingCombat("player") then
+			local old = SetItemRef
+			
+			function SetItemRef(...)
+				local link = ...
+				if link == "reload" then
+					if not InCombatLockdown() then
+						ReloadUI()
+					end
+				else
+					old(...)
+				end
+			end
+			
+			print(format("|cff33FF99%s:|r |cffFF0000%s.|r |cffFF8040|Hreload|h[%s]|h|r", NAME, ERR_NOT_IN_COMBAT, SLASH_RELOAD1))
+			return
+		end
 		
 		-- CompactRaidFrameManager is parented to UIParent
 		-- CompactRaidFrameContainer is parented to CompactRaidFrameManager
 		-- bug: Container (if enabled) will still be shown when solo, after leaving a raid
-		CompactRaidFrameContainer:SetParent(UIParent)
+		if db.Container then
+			CompactRaidFrameContainer:SetParent(UIParent)
+		end
 		
 		for _, v in ipairs(frames) do
 			if not db[v] then
@@ -113,6 +132,36 @@ function f:OnEvent(event, addon)
 				f.Show = function() end
 				f:Hide()
 			end
+		end
+		
+		-- yes I'm a noob with libraries >.<
+		if not FixRaidTaint then
+			local container = CompactRaidFrameContainer
+			
+			local t = {
+				discrete = "flush",
+				flush = "discrete",
+			}
+			
+			-- refresh the (tainted) raid frames after combat
+			local function OnEvent(self)
+				-- secure or still in combat somehow
+				if issecurevariable("CompactRaidFrame1") or InCombatLockdown() or not container:IsShown() then return end
+				
+				-- Bug #1: left/joined players not updated
+				-- Bug #2: sometimes selecting different than the intended target
+				
+				-- change back and forth from flush <-> discrete
+				local mode = container.groupMode -- groupMode changes after _SetGroupMode calls
+				CompactRaidFrameContainer_SetGroupMode(container, t[mode]) -- forth
+				CompactRaidFrameContainer_SetGroupMode(container, mode) -- back
+			end
+			
+			local g = CreateFrame("Frame", "FixRaidTaint")
+			g:RegisterEvent("PLAYER_REGEN_ENABLED")
+			g:SetScript("OnEvent", OnEvent)
+			
+			g.version = 0.2
 		end
 	end
 	
@@ -127,9 +176,7 @@ f:SetScript("OnEvent", f.OnEvent)
 	--- Slash Command ---
 	---------------------
 
-local slashCmds = {"hr", "hrf", "hideraid", "hideraidframe"}
-
-for i, v in ipairs(slashCmds) do
+for i, v in ipairs({"hr", "hrf", "hideraid", "hideraidframe"}) do
 	_G["SLASH_HIDERAIDFRAME"..i] = "/"..v
 end
 
