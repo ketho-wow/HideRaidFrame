@@ -2,13 +2,13 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 1.0 [2012.10.08]			---
+--- Version: 1.1 [2013.05.23]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
 
 local NAME, S = ...
-local VERSION = "1.0"
+local VERSION = GetAddOnMetadata(NAME, "Version")
 local BUILD = "Release"
 
 local ACR = LibStub("AceConfigRegistry-3.0")
@@ -30,6 +30,11 @@ local frames = {"Manager", "Container"}
 	---------------
 	--- Options ---
 	---------------
+	
+local defaults = {
+	db_version = 1.1,
+	HardDisable = true,
+}
 
 local options = {
 	type = "group",
@@ -88,7 +93,10 @@ local f = CreateFrame("Frame")
 function f:OnEvent(event, addon)
 	if addon ~= NAME then return end
 	
-	HideRaidFrameDB3 = HideRaidFrameDB3 or {}
+	if not HideRaidFrameDB3 or HideRaidFrameDB3.db_version ~= defaults.db_version then
+		HideRaidFrameDB3 = defaults
+	end
+	
 	db = HideRaidFrameDB3
 	db.version = VERSION
 	
