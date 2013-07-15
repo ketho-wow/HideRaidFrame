@@ -2,7 +2,7 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 1.1 [2013.05.23]			---
+--- Version: 1.2 [2013.07.15]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
@@ -170,6 +170,11 @@ function f:OnEvent(event, addon)
 			g:SetScript("OnEvent", OnEvent)
 			
 			g.version = 0.2
+		end
+	else
+		-- since patch 4.2 Blizzard_CompactRaidFrames actually anchors PartyMemberFrame1
+		if not PartyMemberFrame1:GetPoint() then
+			PartyMemberFrame1:SetPoint("TOPLEFT", 10, -160)
 		end
 	end
 	
