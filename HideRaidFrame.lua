@@ -2,7 +2,7 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 1.2 [2013.07.15]			---
+--- Version: 1.3 [2014.04.28]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
@@ -11,73 +11,55 @@ local NAME, S = ...
 local VERSION = GetAddOnMetadata(NAME, "Version")
 local BUILD = "Release"
 
-local ACR = LibStub("AceConfigRegistry-3.0")
-local ACD = LibStub("AceConfigDialog-3.0")
-
-local L = S.L
-
-local db
-local pendingReload
+-- since patch 4.2 Blizzard_CompactRaidFrames actually anchors PartyMemberFrame1
+-- (see PartyFrame.xml and Blizzard_CompactRaidFrameManager.lua)
+if not PartyMemberFrame1:GetPoint() then
+	PartyMemberFrame1:SetPoint("TOPLEFT", 10, -160)
+end
 
 local function ToggleAddOn(v)
-	local f = (v or not db.HardDisable) and EnableAddOn or DisableAddOn
+	local f = v and EnableAddOn or DisableAddOn
 	f("Blizzard_CompactRaidFrames")
 	f("Blizzard_CUFProfiles")
 end
 
-local frames = {"Manager", "Container"}
+local ACR, ACD
+if LibStub then
+	ACR = LibStub("AceConfigRegistry-3.0", true)
+	ACD = LibStub("AceConfigDialog-3.0", true)
+end
+
+-- avoid getting blamed for taint, even from embedding Ace3
+-- this depends on another previously loaded addon with Ace3 embedded or the Ace3 standalone
+-- hope there wont be that much ppl affected that want the toggle functionality
+if not ACR or not ACD then
+	ToggleAddOn(false)
+	return
+end
 
 	---------------
 	--- Options ---
 	---------------
-	
-local defaults = {
-	db_version = 1.1,
-	HardDisable = true,
-}
+
+local db, pendingReload
 
 local options = {
 	type = "group",
 	name = format("%s |cffADFF2Fv%s|r", NAME, VERSION),
-	get = function(i)
-		return db[i[#i]]
-	end,
-	set = function(i, v)
-		db[i[#i]] = v
-		if db.Manager or db.Container then
-			db.HardDisable = false
-		end
-		pendingReload = true
-		ToggleAddOn(db.Manager or db.Container)
-	end,
 	args = {
-		inline1 = {
-			type = "group", order = 1,
-			name = " ",
-			inline = true,
-			args = {
-				Manager = {
-					type = "toggle", order = 1,
-					width = "full", descStyle = "",
-					name = " "..L.RAID_MANAGER,
-				},
-				Container = {
-					type = "toggle", order = 2,
-					width = "full", descStyle = "",
-					name = " "..L.RAID_CONTAINER,
-				},
-			},
-		},
-		HardDisable = {
-			type = "toggle", order = 2,
-			desc = L.HARD_DISABLE_DESC,
-			name = L.HARD_DISABLE,
-			disabled = function() return db.Manager or db.Container end,
+		RaidFrames = {
+			type = "toggle", order = 1,
+			name = " "..RAID_FRAMES_LABEL,
+			get = function(i) return db.RaidFrames end,
+			set = function(i, v)
+				db.RaidFrames = v
+				ToggleAddOn(v)
+				pendingReload = (v ~= IsAddOnLoaded("Blizzard_CompactRaidFrames"))
+			end,
 		},
 		Reload = {
-			type = "execute", order = 3,
-			descStyle = "",
-			name = "|TInterface\\OptionsFrame\\UI-OptionsFrame-NewFeatureIcon:0:0:-2|t"..SLASH_RELOAD1,
+			type = "execute", order = 2, descStyle = "",
+			name = SLASH_RELOAD1,
 			func = ReloadUI,
 			hidden = function() return not pendingReload end,
 		},
@@ -93,93 +75,36 @@ local f = CreateFrame("Frame")
 function f:OnEvent(event, addon)
 	if addon ~= NAME then return end
 	
-	if not HideRaidFrameDB3 or HideRaidFrameDB3.db_version ~= defaults.db_version then
-		HideRaidFrameDB3 = defaults
-	end
-	
-	db = HideRaidFrameDB3
+	-- database
+	HideRaidFrameDB4 = HideRaidFrameDB4 or {}
+	db = HideRaidFrameDB4
 	db.version = VERSION
+	db.build = BUILD
+	db.RaidFrames = db.RaidFrames or false -- nil to false for reload checks
 	
+	-- options menu
 	ACR:RegisterOptionsTable(NAME, options)
 	ACD:AddToBlizOptions(NAME, NAME)
-	ACD:SetDefaultSize(NAME, 380, 200)
+	ACD:SetDefaultSize(NAME, 250, 125)
 	
-	if IsAddOnLoaded("Blizzard_CompactRaidFrames") then
+	-- require reload
+	if db.RaidFrames ~= IsAddOnLoaded("Blizzard_CompactRaidFrames") then
+		local old = SetItemRef
 		
-		-- abort when in combat
-		-- InCombatLockdown does not readily seem to return the correct value though
-		if InCombatLockdown() or UnitAffectingCombat("player") then
-			local old = SetItemRef
-			
-			function SetItemRef(...)
-				local link = ...
-				if link == "reload" then
-					if not InCombatLockdown() then
-						ReloadUI()
-					end
-				else
-					old(...)
-				end
-			end
-			
-			print(format("|cff33FF99%s:|r |cffFF0000%s.|r |cffFF8040|Hreload|h[%s]|h|r", NAME, ERR_NOT_IN_COMBAT, SLASH_RELOAD1))
-			return
-		end
-		
-		-- CompactRaidFrameManager is parented to UIParent
-		-- CompactRaidFrameContainer is parented to CompactRaidFrameManager
-		-- bug: Container (if enabled) will still be shown when solo, after leaving a raid
-		if db.Container then
-			CompactRaidFrameContainer:SetParent(UIParent)
-		end
-		
-		for _, v in ipairs(frames) do
-			if not db[v] then
-				local f = _G["CompactRaidFrame"..v]
-				f:UnregisterAllEvents()
-				f.Show = function() end
-				f:Hide()
+		function SetItemRef(...)
+			local link = ...
+			if link == "reload" then
+				ReloadUI()
+			else
+				old(...)
 			end
 		end
 		
-		-- yes I'm a noob with libraries >.<
-		if not FixRaidTaint then
-			local container = CompactRaidFrameContainer
-			
-			local t = {
-				discrete = "flush",
-				flush = "discrete",
-			}
-			
-			-- refresh the (tainted) raid frames after combat
-			local function OnEvent(self)
-				-- secure or still in combat somehow
-				if issecurevariable("CompactRaidFrame1") or InCombatLockdown() or not container:IsShown() then return end
-				
-				-- Bug #1: left/joined players not updated
-				-- Bug #2: sometimes selecting different than the intended target
-				
-				-- change back and forth from flush <-> discrete
-				local mode = container.groupMode -- groupMode changes after _SetGroupMode calls
-				CompactRaidFrameContainer_SetGroupMode(container, t[mode]) -- forth
-				CompactRaidFrameContainer_SetGroupMode(container, mode) -- back
-			end
-			
-			local g = CreateFrame("Frame", "FixRaidTaint")
-			g:RegisterEvent("PLAYER_REGEN_ENABLED")
-			g:SetScript("OnEvent", OnEvent)
-			
-			g.version = 0.2
-		end
-	else
-		-- since patch 4.2 Blizzard_CompactRaidFrames actually anchors PartyMemberFrame1
-		if not PartyMemberFrame1:GetPoint() then
-			PartyMemberFrame1:SetPoint("TOPLEFT", 10, -160)
-		end
+		print(format("|cff33FF99%s:|r |cffFF8040|Hreload|h[%s]|h|r", NAME, SLASH_RELOAD1))
 	end
 	
-	ToggleAddOn(db.Manager or db.Container)
-	self:UnregisterEvent("ADDON_LOADED")
+	ToggleAddOn(db.RaidFrames)
+	self:UnregisterEvent(event)
 end
 
 f:RegisterEvent("ADDON_LOADED")
@@ -195,4 +120,26 @@ end
 
 SlashCmdList.HIDERAIDFRAME = function(msg, editbox)
 	ACD:Open(NAME)
+end
+
+	---------------------
+	--- LibDataBroker ---
+	---------------------
+
+local dataobject = {
+	type = "launcher",
+	icon = "Interface\\Icons\\Ability_Stealth",
+	text = NAME,
+	OnClick = function(clickedframe, button)
+		ACD[ACD.OpenFrames[NAME] and "Close" or "Open"](ACD, NAME)
+	end,
+	OnTooltipShow = function(tt)
+		tt:AddLine("|cffADFF2F"..NAME.."|r")
+		tt:AddLine(S.L.BROKER_CLICK)
+	end,
+}
+
+local LDB = LibStub("LibDataBroker-1.1", true)
+if LDB then
+	LDB:NewDataObject(NAME, dataobject)
 end
