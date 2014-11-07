@@ -2,17 +2,15 @@
 
 local L = {
 	deDE = {
-		BROKER_CLICK = "|cffFFFFFFKlickt|r, um das Optionsmenü zu öffnen",
+		BROKER_SHIFT_CLICK = "|cffFFFFFFShift-klickt|r, um dieses AddOn ein-/auszuschalten",
 	},
 	enUS = {
-		BROKER_CLICK = "|cffFFFFFFClick|r to open the options menu",
+		BROKER_SHIFT_CLICK = "|cffFFFFFFShift-click|r to toggle this AddOn",
 	},
 	esES = {
-		BROKER_CLICK = "|cffffffffHaz clic|r para ver opciones.",
+		BROKER_SHIFT_CLICK = "|cffffffffMayús-clic|r para activar/desactivar",
 	},
-	esMX = {
-		BROKER_CLICK = "|cffffffffHaz clic|r para ver opciones.",
-	},
+	--esMX = {},
 	frFR = {
 	},
 	koKR = {
@@ -22,11 +20,14 @@ local L = {
 	ruRU = {
 	},
 	zhCN = {
-		BROKER_CLICK = "|cffFFFFFF点击|r打开选项菜单",
+		BROKER_SHIFT_CLICK = "|cffFFFFFFrShift-点击|r 启用或禁用插件",
 	},
 	zhTW = {
+		BROKER_SHIFT_CLICK = "|cffFFFFFFrShift-點擊|r 啟用或禁用插件",
 	},
 }
+
+L.esMX = L.esES
 
 S.L = setmetatable(L[GetLocale()] or L.enUS, {__index = function(t, k)
 	local v = rawget(L.enUS, k) or k
