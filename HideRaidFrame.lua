@@ -2,7 +2,7 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 1.5 [2014.11.07]			---
+--- Version: 1.6 [2015.09.04]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
@@ -34,6 +34,7 @@ end
 
 SlashCmdList.HIDERAIDFRAME = function(msg, editbox)
 	ToggleAddOn(not state)
+	db.msg = true
 	ReloadUI()
 end
 
@@ -60,6 +61,7 @@ function f:OnEvent(event, addon)
 		function SetItemRef(...)
 			local link = ...
 			if link == "reload" then
+				db.msg = true
 				ReloadUI()
 			else
 				old(...)
@@ -67,6 +69,12 @@ function f:OnEvent(event, addon)
 		end
 		
 		print(format("|cff33FF99%s:|r |cffFF8040|Hreload|h[%s]|h|r", NAME, SLASH_RELOAD1))
+	end
+	
+	if db.msg then
+		msgstate = state and "|cffADFF2F"..VIDEO_OPTIONS_ENABLED.."|r" or "|cffFF2424"..VIDEO_OPTIONS_DISABLED.."|r"
+		print(format("|cff33FF99%s|r has %s the Blizzard |cff33FF99%s|r", NAME, msgstate, RAID_FRAMES_LABEL))
+		db.msg = false
 	end
 	
 	ToggleAddOn(db.RaidFrames)
