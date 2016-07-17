@@ -2,7 +2,7 @@
 --- Author: Ketho (EU-Boulderfist)		---
 --- License: Public Domain				---
 --- Created: 2011.07.06					---
---- Version: 1.6 [2015.09.04]			---
+--- Version: 1.7 [2016.05.15]			---
 -------------------------------------------
 --- Curse			http://www.curse.com/addons/wow/hideraidframe
 --- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
@@ -72,7 +72,7 @@ function f:OnEvent(event, addon)
 	end
 	
 	if db.msg then
-		msgstate = state and "|cffADFF2F"..VIDEO_OPTIONS_ENABLED.."|r" or "|cffFF2424"..VIDEO_OPTIONS_DISABLED.."|r"
+		local msgstate = state and "|cffADFF2F"..VIDEO_OPTIONS_ENABLED.."|r" or "|cffFF2424"..VIDEO_OPTIONS_DISABLED.."|r"
 		print(format("|cff33FF99%s|r has %s the Blizzard |cff33FF99%s|r", NAME, msgstate, RAID_FRAMES_LABEL))
 		db.msg = false
 	end
