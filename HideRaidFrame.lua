@@ -1,16 +1,7 @@
--------------------------------------------
---- Author: Ketho (EU-Boulderfist)		---
---- License: Public Domain				---
---- Created: 2011.07.06					---
---- Version: 1.7 [2016.05.15]			---
--------------------------------------------
---- Curse			http://www.curse.com/addons/wow/hideraidframe
---- WoWInterface	http://www.wowinterface.com/downloads/info20052-HideRaidFrame.html
+-- Author: Ketho (EU-Boulderfist)
+-- License: Public Domain
 
 local NAME, S = ...
-local VERSION = GetAddOnMetadata(NAME, "Version")
-local BUILD = "Release"
-
 local db
 local state = IsAddOnLoaded("Blizzard_CompactRaidFrames")
 
@@ -27,7 +18,6 @@ local function ToggleAddOn(v)
 	f("Blizzard_CUFProfiles")
 end
 
--- Slash Command
 for i, v in ipairs({"hr", "hrf", "hideraid", "hideraidframe"}) do
 	_G["SLASH_HIDERAIDFRAME"..i] = "/"..v
 end
@@ -38,37 +28,27 @@ SlashCmdList.HIDERAIDFRAME = function(msg, editbox)
 	ReloadUI()
 end
 
-	----------------------
-	--- Initialization ---
-	----------------------
-
 local f = CreateFrame("Frame")
 
 function f:OnEvent(event, addon)
 	if addon ~= NAME then return end
 	
-	-- database
 	HideRaidFrameDB4 = HideRaidFrameDB4 or {}
 	db = HideRaidFrameDB4
-	db.version = VERSION
-	db.build = BUILD
 	db.RaidFrames = db.RaidFrames or false -- nil to false for reload checks
 	
-	-- require reload
+	-- require reload; 7.1 broke hw events with custom chat links
 	if db.RaidFrames ~= state then
-		local old = SetItemRef
-		
-		function SetItemRef(...)
-			local link = ...
-			if link == "reload" then
+		StaticPopupDialogs.HIDERAIDFRAME_RELOAD = {
+			text = NAME..": "..REQUIRES_RELOAD,
+			button1 = RELOADUI,
+			OnAccept = function()
 				db.msg = true
 				ReloadUI()
-			else
-				old(...)
-			end
-		end
-		
-		print(format("|cff33FF99%s:|r |cffFF8040|Hreload|h[%s]|h|r", NAME, SLASH_RELOAD1))
+			end,
+			whileDead = 1, hideOnEscape = 1, showAlert = 1,
+		}
+		StaticPopup_Show("HIDERAIDFRAME_RELOAD")
 	end
 	
 	if db.msg then
@@ -83,10 +63,6 @@ end
 
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", f.OnEvent)
-
-	---------------------
-	--- LibDataBroker ---
-	---------------------
 
 local dataobject = {
 	type = "launcher",
