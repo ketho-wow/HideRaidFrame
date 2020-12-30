@@ -32,11 +32,11 @@ local f = CreateFrame("Frame")
 
 function f:OnEvent(event, addon)
 	if addon ~= NAME then return end
-	
+
 	HideRaidFrameDB4 = HideRaidFrameDB4 or {}
 	db = HideRaidFrameDB4
 	db.RaidFrames = db.RaidFrames or false -- nil to false for reload checks
-	
+
 	-- require reload; 7.1 broke hw events with custom chat links
 	if db.RaidFrames ~= state then
 		StaticPopupDialogs.HIDERAIDFRAME_RELOAD = {
@@ -50,13 +50,13 @@ function f:OnEvent(event, addon)
 		}
 		StaticPopup_Show("HIDERAIDFRAME_RELOAD")
 	end
-	
+
 	if db.msg then
 		local msgstate = state and "|cffADFF2F"..VIDEO_OPTIONS_ENABLED.."|r" or "|cffFF2424"..VIDEO_OPTIONS_DISABLED.."|r"
 		print(format("|cff33FF99%s|r has %s the Blizzard |cff33FF99%s|r", NAME, msgstate, RAID_FRAMES_LABEL))
 		db.msg = false
 	end
-	
+
 	ToggleAddOn(db.RaidFrames)
 	self:UnregisterEvent(event)
 end
